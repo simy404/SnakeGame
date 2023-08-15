@@ -11,30 +11,35 @@ using System.Windows.Forms;
 
 namespace SnakeGame
 {
-    public partial class Form1 : Form
+    public partial class SnakeGame : Form
     {
-        public Form1()
+        static GameState gameState;
+        
+        public SnakeGame()
         {
             InitializeComponent();
+            gameState = new GameState(panel1);
+            gameState.IsFoodGenerate += () => gameState.GenerateFood();
         }
-        static GameState gameState;
-        Direction direction = Direction.up;
+       
         private void Form1_Load(object sender, EventArgs e)
         {
-            gameState = new GameState(panel1);              
+           
         }
 
         private void timer1_Tick(object sender, EventArgs e)
         {
             if (!gameState.CheckSelfCollision()) {
-                gameState.UpdateGame(direction);
+                gameState.IsEatFood();
+                gameState.UpdateSnakePosition();
+                gameState.SnakeMove();
             } 
         }
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
-            gameState.Move((Keys)e.KeyValue, out direction);
-            button1.Text = e.KeyCode.ToString();            
+            gameState.DeterminateDirection((Keys)e.KeyValue);
+                      
         }
     }
 }

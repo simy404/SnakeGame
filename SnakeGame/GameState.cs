@@ -11,50 +11,43 @@ namespace SnakeGame
 {
     internal class GameState
     {
-        private Panel GameBoard;
-        private List<Panel> Snake;
-        private Panel SnakeSegment;
-        private Panel food;
+        private GameBoard GameBoard;
+        private Snake Snake;
+        private Food food;
         private bool isFoodGenerated = false;
+        Direction direction;
+        public event Action IsFoodGenerate;
         public GameState(Panel _GameBoard)
         {
-            GameBoard = _GameBoard;
-            GameBoard.BackColor = Color.Black;
-
-            Snake = new List<Panel>();
-
-            SnakeSegment = new Panel();
-            SnakeSegment.Location = new Point(580, 200);
-            SnakeSegment.Size = new Size(20, 20);
-            SnakeSegment.BackColor = Color.Gray;
-
-            Snake.Add(SnakeSegment);
-            GameBoard.Controls.Add(Snake[0]);
+            GameBoard = new GameBoard(_GameBoard, Color.Black);
+            Snake = new Snake();           
+            GameBoard.AddControl(Snake[0]);
+            GenerateFood();
         }
 
-        private void SnakeDirection(Direction direction)
+        public void UpdateSnakePosition()
         {
             int lockX = Snake[0].Location.X;
             int lockY = Snake[0].Location.Y;
 
             switch (direction)
             {
-                case Direction.left:
+                case Direction.Left:
                     lockX -= 20;
                     break;
-                case Direction.right:
+                case Direction.Right:
                     lockX += 20;
                     break;
-                case Direction.up:
+                case Direction.Up:
                     lockY -= 20;
                     break;
-                case Direction.down:
+                case Direction.Down:
                     lockY += 20;
                     break;
             }
 
-            lockX = IsSnakeInsideGrid(lockX, 0, GameBoard.Width - 20);
-            lockY = IsSnakeInsideGrid(lockY, 0, GameBoard.Width - 20);
+            lockX = IsSnakeInsideGrid(lockX, 0, GameBoard.BoardWith - 20);
+            lockY = IsSnakeInsideGrid(lockY, 0, GameBoard.BoardHeight - 20);
 
 
             Snake[0].Location = new Point(lockX, lockY);
@@ -69,66 +62,69 @@ namespace SnakeGame
             return value;
         }
 
-        public void Move(Keys key, out Direction direction)
+        public void DeterminateDirection(Keys key)
         {
             switch (key)
             {
-                case Keys.A:
-                    direction = Direction.left;
+                case Keys.A when direction is not Direction.Right:
+                    direction = Direction.Left;
                     break;
-                case Keys.D:
-                    direction = Direction.right;
+                case Keys.D when direction is not Direction.Left:
+                    direction = Direction.Right;
                     break;
-                case Keys.W:
-                    direction = Direction.up;
+                case Keys.W when direction is not Direction.Down:
+                    direction = Direction.Up;
                     break;
-                case Keys.S:
-                    direction = Direction.down;
+                case Keys.S when direction is not Direction.Up:
+                    direction = Direction.Down;
                     break;
-                default:
-                    direction = Direction.none;
+                default:                    
                     break;
             }
         }
 
-        private void GenerateFood()
+        public void GenerateFood()
         {
             if (isFoodGenerated == true) return;
+            
             Random randCord = new Random();
-            int CordX = randCord.Next(0, GameBoard.Width / 20) * 20;
-            int CordY = randCord.Next(0, GameBoard.Width / 20) * 20;
-
-            food = new Panel();
-            food.Size = new Size(20, 20);
-            food.BackColor = Color.Red;
-            food.Location = new Point(CordX, CordY);
-            GameBoard.Controls.Add(food);
-
+            int CordX = randCord.Next(0, GameBoard.BoardWith / 20) * 20;
+            int CordY = randCord.Next(0, GameBoard.BoardHeight / 20) * 20;
+            
+            Size Size = new Size(20, 20);
+            Color BackColor = Color.Red;
+            Point Location = new Point(CordX, CordY);
+            food = new Food(Size, BackColor, Location);
+            
+            GameBoard.AddFood(food.Get());
             isFoodGenerated = true;
         }
 
-        private void EatFood()
+        public void IsEatFood()
         {
             if (isFoodGenerated is false) return;
 
             int sLockX = Snake[0].Location.X;
             int slockY = Snake[0].Location.Y;
 
-            int fLockX = food.Location.X;
-            int fLockY = food.Location.Y;
+            int fLockX = food.locationX;
+            int fLockY = food.locationY;
 
             if (sLockX == fLockX && slockY == fLockY)
             {
-                food.Dispose();
+                food.DestroyFood();
                 isFoodGenerated = false;                
                 AddSegment();
+
+                //Trigger GenerateFood() func
+                IsFoodGenerate?.Invoke();
             }
 
         }
 
-        private void SnakeMove()
+        public void SnakeMove()
         {
-            for (int i = Snake.Count - 1; i > 0; i--)
+            for (int i = Snake.SegmentCount - 1; i > 0; i--)
             {
                 Snake[i].Location = Snake[i - 1].Location;
             }
@@ -136,31 +132,21 @@ namespace SnakeGame
 
         public  bool CheckSelfCollision()
         {
-            for (int i = 2; i < Snake.Count; i++)
+            for (int i = 2; i < Snake.SegmentCount; i++)
             {
                 if (Snake[0].Location == Snake[i].Location)
-                    return true;
-                        //todo game is over when eaten food;                   
+                    return true;                  
             }
-            return false;
+                return false;
         }
 
         private void AddSegment()
         {
-            Panel Segment = new Panel();
-            Segment.Size = new Size(20, 20);
-            Segment.BackColor = Color.Gray;
-            Snake.Add(Segment);
-            GameBoard.Controls.Add(Segment);
+            Segment segment = new Segment();
+            Snake.AddSegment(segment);
+            GameBoard.AddControl(segment);
         }
 
-        public void UpdateGame(Direction direction)
-        {
-            SnakeDirection(
-    direction);
-            GenerateFood();
-            EatFood();
-            SnakeMove();
-        }
+
     }
 }
